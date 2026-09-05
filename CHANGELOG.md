@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.3](https://github.com/trantruong-dev/pinboard-vscode/compare/v0.0.2...v0.0.3) (2026-09-05)
+
+### Added
+
+* rebuild the panel to match the JetBrains one ([03ac9f5](https://github.com/trantruong-dev/pinboard-vscode/commit/03ac9f577a7461050928d811510683297facae93))
+
+### Fixed
+
+* report the installed version to MCP clients ([d2ef1c7](https://github.com/trantruong-dev/pinboard-vscode/commit/d2ef1c7d1e11b4a1bcf1f53bdd0e95e5bf738808))
 ## [0.0.2](https://github.com/trantruong-dev/pinboard-vscode/compare/v0.0.1...v0.0.2) (2026-09-05)
 
 ### Fixed
