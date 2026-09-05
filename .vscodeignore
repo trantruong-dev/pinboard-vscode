@@ -1,0 +1,16 @@
+# Source and tests do not ship: the compiled output in out/ is what runs.
+src/**
+out/test/**
+out/**/*.map
+.vscode/**
+.github/**
+tsconfig.json
+**/*.ts
+!out/**/*.js
+
+# Agent-side material: installed from the repo, not from the extension.
+skills/**
+.claude-plugin/**
+
+.gitignore
+.versionrc.json

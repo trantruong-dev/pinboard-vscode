@@ -1,0 +1,18 @@
+{
+  "name": "trantruong-dev",
+  "owner": {
+    "name": "Trần Quang Trường",
+    "url": "https://github.com/trantruong-dev"
+  },
+  "plugins": [
+    {
+      "name": "pinboard",
+      "source": "./",
+      "displayName": "Pinboard",
+      "description": "Teaches Claude Code to work through the feedback queue pinned from VS Code by the Pinboard extension.",
+      "version": "0.0.1",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/trantruong-dev/pinboard-vscode"
+    }
+  ]
+}
