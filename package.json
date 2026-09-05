@@ -190,6 +190,7 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test \"out/test/*.test.js\"",
     "package": "vsce package",
+    "clean": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\"",
     "release": "commit-and-tag-version",
     "vscode:prepublish": "npm run compile"
   },
