@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Activity bar icons are masked to a single colour by the theme, so this is one solid shape
+       with no fills of its own: a pushpin, angled the way one sits in a board. -->
+  <path fill="currentColor"
+        d="M14.9 2.1a1 1 0 0 0-1.41 0l-.7.7a1 1 0 0 0 0 1.42l.35.35-3.62 3.62-2.9-.5a1 1 0 0 0-.88.28l-.5.5a1 1 0 0 0 0 1.41l3.6 3.6-4.6 5.6a.5.5 0 0 0 .71.71l5.6-4.6 3.6 3.6a1 1 0 0 0 1.41 0l.5-.5a1 1 0 0 0 .28-.88l-.5-2.9 3.62-3.62.35.35a1 1 0 0 0 1.42 0l.7-.7a1 1 0 0 0 0-1.41z"/>
+</svg>

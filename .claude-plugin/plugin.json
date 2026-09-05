@@ -1,0 +1,11 @@
+{
+  "name": "pinboard",
+  "description": "Teaches Claude Code to work through the feedback queue pinned from VS Code by the Pinboard extension.",
+  "version": "0.0.1",
+  "author": {
+    "name": "Trần Quang Trường"
+  },
+  "homepage": "https://github.com/trantruong-dev/pinboard-vscode",
+  "repository": "https://github.com/trantruong-dev/pinboard-vscode",
+  "license": "Apache-2.0"
+}

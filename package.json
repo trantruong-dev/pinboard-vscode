@@ -1,0 +1,205 @@
+{
+  "name": "pinboard",
+  "displayName": "Pinboard",
+  "description": "Pin feedback onto several pieces of code, then tell your agent to work through the lot.",
+  "version": "0.0.1",
+  "publisher": "trantruong-dev",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Trần Quang Trường"
+  },
+  "homepage": "https://github.com/trantruong-dev/pinboard-vscode",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trantruong-dev/pinboard-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/trantruong-dev/pinboard-vscode/issues"
+  },
+  "sponsor": {
+    "url": "https://buymeacoffee.com/trantruong.dev"
+  },
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "mcp",
+    "agent",
+    "copilot",
+    "code review",
+    "feedback"
+  ],
+  "icon": "media/icon.png",
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "pinboard.mcp",
+        "label": "Pinboard"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pinboard",
+          "title": "Pinboard",
+          "icon": "media/pinboard.svg"
+        }
+      ]
+    },
+    "views": {
+      "pinboard": [
+        {
+          "id": "pinboard.queue",
+          "name": "Queue",
+          "icon": "media/pinboard.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "pinboard.queue",
+        "contents": "Nothing pinned yet.\n\nSelect some code and press Ctrl+Alt+Shift+F (Cmd+Alt+Shift+F on macOS), or right-click and choose Pin for Agent.\n\n[Copy MCP config for another agent](command:pinboard.copyMcpConfig)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "pinboard.pinSelection",
+        "title": "Pin for Agent",
+        "category": "Pinboard"
+      },
+      {
+        "command": "pinboard.pinFile",
+        "title": "Pin File for Agent",
+        "category": "Pinboard"
+      },
+      {
+        "command": "pinboard.deleteItem",
+        "title": "Delete",
+        "category": "Pinboard",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "pinboard.clearResolved",
+        "title": "Clear Finished Items",
+        "category": "Pinboard",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "pinboard.deleteAll",
+        "title": "Delete All Items",
+        "category": "Pinboard"
+      },
+      {
+        "command": "pinboard.copyMcpConfig",
+        "title": "Copy MCP Server Config",
+        "category": "Pinboard"
+      },
+      {
+        "command": "pinboard.refresh",
+        "title": "Refresh",
+        "category": "Pinboard",
+        "icon": "$(refresh)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pinboard.pinSelection",
+        "key": "ctrl+alt+shift+f",
+        "mac": "cmd+alt+shift+f",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pinboard.pinSelection",
+          "group": "1_modification@100",
+          "when": "editorHasSelection"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "pinboard.pinFile",
+          "group": "7_modification@100",
+          "when": "!explorerResourceIsFolder"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "pinboard.pinFile",
+          "group": "1_modification@100"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "pinboard.clearResolved",
+          "when": "view == pinboard.queue",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pinboard.refresh",
+          "when": "view == pinboard.queue",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pinboard.deleteAll",
+          "when": "view == pinboard.queue"
+        },
+        {
+          "command": "pinboard.copyMcpConfig",
+          "when": "view == pinboard.queue"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pinboard.deleteItem",
+          "when": "view == pinboard.queue && viewItem == pinboard.item",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Pinboard",
+      "properties": {
+        "pinboard.mcpServer.port": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 65535,
+          "description": "Port for Pinboard's MCP server, bound to 127.0.0.1. 0 lets the operating system pick a free port, which is fine for VS Code's own agent because it is told the port directly. Pin a number if you configure an external client by hand and want the address to stay put."
+        },
+        "pinboard.snippet.maxLines": {
+          "type": "number",
+          "default": 400,
+          "minimum": 1,
+          "description": "Longest code snapshot stored with a pin, in lines. Anything longer is truncated and flagged."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test \"out/test/*.test.js\"",
+    "package": "vsce package",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.101.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.6.0"
+  }
+}
