@@ -13,3 +13,4 @@ skills/**
 .claude-plugin/**
 
 .gitignore
+.versionrc.json

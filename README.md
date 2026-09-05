@@ -144,6 +144,10 @@ npm run package # produces a .vsix
 
 Requires Node 18 or newer.
 
+`npm run release` cuts a version: it reads the conventional-commit messages since the last tag,
+bumps `package.json`, writes the new section of `CHANGELOG.md`, commits, and tags. The changelog is
+generated, so edit the commit messages rather than the file.
+
 ## Support this extension
 
 Pinboard is free and always will be. If it saves you time, you can
