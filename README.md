@@ -44,6 +44,13 @@ matters for other agents, which point at the server's URL - see below.
 
 From the Marketplace: search for **Pinboard**, install, and open a folder. No configuration.
 
+```bash
+code --install-extension trantruong-dev.agent-pinboard
+```
+
+The id reads `agent-pinboard` because the Marketplace hands out extension ids globally rather than
+per publisher, and another extension already holds `pinboard`.
+
 The MCP server starts with the extension, listening on `127.0.0.1` on a port the operating system
 picks. Copilot is handed that address automatically.
 

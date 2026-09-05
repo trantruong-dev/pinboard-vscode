@@ -80,7 +80,7 @@ release:
 	npm test
 	npx commit-and-tag-version --release-as $(VERSION)
 	npm run package
-	npx vsce publish --packagePath pinboard-$(VERSION).vsix
+	npx vsce publish --packagePath agent-pinboard-$(VERSION).vsix
 	git push --follow-tags origin main
 
 clean:
