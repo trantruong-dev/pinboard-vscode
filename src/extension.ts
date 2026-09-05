@@ -98,7 +98,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const tools = new FeedbackTools(store, readText);
     const port = vscode.workspace.getConfiguration('pinboard').get<number>('mcpServer.port', 0);
     try {
-        server = await startMcpServer(tools, port, message => output.appendLine(`[mcp] ${message}`));
+        server = await startMcpServer(
+            tools,
+            port,
+            message => output.appendLine(`[mcp] ${message}`),
+            // Read from the manifest so the version a client sees is the installed one, rather than
+            // a literal that has to be remembered at every release.
+            String(context.extension.packageJSON.version),
+        );
         definitions.announce();
     } catch (error) {
         output.appendLine(`[mcp] failed to start: ${String(error)}`);

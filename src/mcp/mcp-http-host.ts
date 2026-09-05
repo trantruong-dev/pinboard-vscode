@@ -50,9 +50,9 @@ interface Session {
  * connected to a transport" - so sharing one across sessions locks out every client after the
  * first. They all close over the same FeedbackTools, so a session per client still means one queue.
  */
-function createMcpServer(tools: FeedbackTools): McpServer {
+function createMcpServer(tools: FeedbackTools, version: string): McpServer {
     const mcp = new McpServer(
-        { name: 'pinboard', version: '0.0.1' },
+        { name: 'pinboard', version },
         {
             instructions:
                 'Pinboard holds code feedback the developer pinned in their editor. Start with feedback_list to read anything already waiting, acknowledge it, then close each item with feedback_resolve and a real summary. feedback_watch blocks for the next batch.',
@@ -67,11 +67,15 @@ function createMcpServer(tools: FeedbackTools): McpServer {
  *
  * `requestedPort` of 0 lets the operating system pick, which is right when the editor is told the
  * address directly. A fixed port only matters when someone writes a client config by hand.
+ *
+ * `version` is what clients read back as the server's version, and comes from the extension manifest
+ * so it cannot fall behind a release.
  */
 export async function startMcpServer(
     tools: FeedbackTools,
     requestedPort: number,
     log: (message: string) => void,
+    version: string,
 ): Promise<RunningMcpServer> {
     // One session per client, kept so follow-up requests reach the session that started them.
     const sessions = new Map<string, Session>();
@@ -101,7 +105,7 @@ export async function startMcpServer(
 
         // No session yet: this must be an initialize, which gets a transport and a server of its own.
         const port = (http.address() as AddressInfo).port;
-        const mcp = createMcpServer(tools);
+        const mcp = createMcpServer(tools, version);
         const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             enableDnsRebindingProtection: true,

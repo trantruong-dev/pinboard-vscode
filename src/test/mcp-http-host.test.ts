@@ -23,6 +23,9 @@ let server: RunningMcpServer;
 let store: FeedbackStore;
 let client: Client;
 
+/** Deliberately not the real version, so a literal left in the server code cannot pass by luck. */
+const TEST_VERSION = '9.9.9-test';
+
 function draft(note: string) {
     return {
         scope: 'SELECTION' as const,
@@ -49,7 +52,12 @@ before(async () => {
     const dir = await mkdtemp(join(tmpdir(), 'pinboard-http-'));
     store = new FeedbackStore(join(dir, 'queue.json'));
     await store.load();
-    server = await startMcpServer(new FeedbackTools(store, async () => 'zero\none\ntwo\n'), 0, () => {});
+    server = await startMcpServer(
+        new FeedbackTools(store, async () => 'zero\none\ntwo\n'),
+        0,
+        () => {},
+        TEST_VERSION,
+    );
 
     client = new Client({ name: 'pinboard-test', version: '0' });
     await client.connect(new StreamableHTTPClientTransport(new URL(server.url)));
@@ -64,6 +72,15 @@ after(async () => {
 test('the server binds to loopback only, so nothing off the machine can reach the queue', () => {
     assert.match(server.url, /^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
     assert.ok(server.port > 0);
+});
+
+/**
+ * The version a client reads back has to be the extension's own, not a literal in the server code.
+ * A literal is right exactly once and silently wrong after the next release, which is what happened
+ * between 0.0.1 and 0.0.2.
+ */
+test('the server reports the version it was started with', () => {
+    assert.deepEqual(client.getServerVersion(), { name: 'pinboard', version: TEST_VERSION });
 });
 
 test('a client sees exactly the seven tools, under the documented names', async () => {
