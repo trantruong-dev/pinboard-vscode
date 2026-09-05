@@ -2,7 +2,7 @@
   "name": "pinboard",
   "displayName": "Pinboard",
   "description": "Pin feedback onto several pieces of code, then tell your agent to work through the lot.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "trantruong-dev",
   "license": "Apache-2.0",
   "author": {

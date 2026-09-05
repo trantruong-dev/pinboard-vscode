@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.0.2](https://github.com/trantruong-dev/pinboard-vscode/compare/v0.0.1...v0.0.2) (2026-09-05)
+
+### Fixed
+
+* give every MCP session its own server instance ([0d91222](https://github.com/trantruong-dev/pinboard-vscode/commit/0d91222b0d495e922160f597a71858ce45775979))
 ## [0.0.1]
 
 First release.
