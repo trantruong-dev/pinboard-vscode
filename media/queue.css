@@ -1,0 +1,302 @@
+/*
+ * The queue panel.
+ *
+ * Every colour dereferences a role-named custom property rather than naming one on the spot, so a
+ * status can be recoloured in one place and the whole panel follows. That mirrors PinboardColors in
+ * the JetBrains build, which exists for the same reason.
+ *
+ * The values behind the roles are VS Code theme variables, never literals: the editor restyles them
+ * on a theme switch and the panel follows without asking. A hex here would freeze at whichever
+ * theme happened to be active.
+ */
+
+:root {
+  --pin-surface: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  --pin-text: var(--vscode-foreground);
+  --pin-text-muted: var(--vscode-descriptionForeground);
+  --pin-border: var(--vscode-panel-border, var(--vscode-editorWidget-border));
+  --pin-selection: var(--vscode-list-activeSelectionBackground);
+  --pin-hover: var(--vscode-list-hoverBackground);
+
+  /* Work still owed. */
+  --pin-pending: var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground));
+  /* Positive progress. */
+  --pin-active: var(--vscode-charts-green, var(--vscode-testing-iconPassed));
+  /*
+   * Closed and archived. A chart blue rather than the theme accent: an accent is not guaranteed to
+   * read as blue, and this has to stay distinct from the other two in the ribbon, where all three
+   * sit side by side.
+   */
+  --pin-done: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
+  --pin-error: var(--vscode-errorForeground, var(--vscode-editorError-foreground));
+}
+
+/* A tinted background is a function of a token, never a token of its own: there is one amber in the
+   panel, not an amber and a pale amber that can drift apart. */
+.tone-pending { --tone: var(--pin-pending); }
+.tone-active { --tone: var(--pin-active); }
+.tone-done { --tone: var(--pin-done); }
+.tone-error { --tone: var(--pin-error); }
+.tone-idle { --tone: var(--pin-text-muted); }
+.tone-waiting { --tone: var(--pin-pending); }
+
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--pin-text);
+  background: var(--pin-surface);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---------- progress ribbon ---------- */
+
+#ribbon {
+  padding: 6px 12px;
+  flex: none;
+}
+
+#ribbon[hidden] { display: none !important; }
+
+.bar {
+  display: flex;
+  height: 5px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--pin-text-muted) 13%, transparent);
+}
+
+.bar > span {
+  /* Widths are set inline from the counts; the transition is what makes a resolve visible rather
+     than a snap the user misses. */
+  transition: width 220ms ease-out;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+.legend > span { color: var(--tone); white-space: nowrap; }
+
+/* ---------- queue ---------- */
+
+#queue {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 4px 8px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+
+.group-header:hover { background: var(--pin-hover); }
+.group-header .twisty { color: var(--pin-text-muted); width: 10px; }
+.group-header .count { color: var(--pin-text-muted); font-weight: 400; font-size: 0.9em; }
+
+/*
+ * The card. It exists because a single-line row was unreadable in a docked panel - a long note was
+ * simply clipped. Here the note wraps to whatever width the panel has right now.
+ */
+.card {
+  position: relative;
+  padding: 7px 10px 7px 16px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  display: block;
+}
+
+/* The rounded status bar down the card's left edge. */
+.card::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--tone);
+}
+
+.card:hover { background: var(--pin-hover); }
+.card.selected { background: var(--pin-selection); color: var(--vscode-list-activeSelectionForeground); }
+.card:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+
+.card .meta {
+  display: flex;
+  gap: 6px;
+  font-size: 0.9em;
+  color: var(--pin-text-muted);
+  margin-bottom: 4px;
+}
+
+.card .warning { color: var(--pin-error); }
+
+.card .note {
+  color: inherit;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Editor font: this is code, and setting it apart from the note is what makes a glance enough to
+   tell which is which. */
+.card .snippet {
+  margin-top: 4px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  color: var(--pin-text-muted);
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card .age {
+  margin-top: 4px;
+  font-size: 0.9em;
+  color: var(--pin-text-muted);
+}
+
+.empty {
+  padding: 16px 12px;
+  color: var(--pin-text-muted);
+  line-height: 1.5;
+}
+
+.empty kbd {
+  font-family: var(--vscode-editor-font-family);
+  border: 1px solid var(--pin-border);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+.empty a { color: var(--vscode-textLink-foreground); cursor: pointer; }
+
+/* ---------- detail ---------- */
+
+#detail {
+  flex: 0 0 45%;
+  min-height: 0;
+  overflow-y: auto;
+  border-top: 1px solid var(--pin-border);
+  padding: 8px 10px;
+}
+
+#detail[hidden] { display: none !important; }
+
+#detail .head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#detail .path {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  flex: 1 1 auto;
+}
+
+#detail .close {
+  flex: none;
+  background: none;
+  border: none;
+  color: var(--pin-text-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 4px;
+}
+
+#detail .close:hover { color: var(--pin-text); }
+
+.pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.85em;
+  white-space: nowrap;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 13%, transparent);
+}
+
+#detail .banner {
+  color: var(--pin-error);
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+#detail h4 {
+  font-size: 0.85em;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pin-text-muted);
+  margin: 12px 0 4px;
+}
+
+#detail .body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+
+#detail pre {
+  margin: 0;
+  padding: 6px 8px;
+  overflow-x: auto;
+  background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+  border: 1px solid var(--pin-border);
+  border-radius: 4px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+#detail .note-hint { color: var(--pin-text-muted); font-size: 0.9em; margin-top: 4px; }
+
+.when { color: var(--pin-text-muted); font-size: 0.9em; margin-left: 4px; }
+
+.message { margin-bottom: 8px; }
+.message .who { font-weight: 600; }
+
+/* ---------- footer ---------- */
+
+#footer {
+  flex: none;
+  border-top: 1px solid var(--pin-border);
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+}
+
+#footer .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+  flex: none;
+}
+
+#footer .label { color: var(--tone); white-space: nowrap; }
+
+#footer .detail {
+  color: var(--pin-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

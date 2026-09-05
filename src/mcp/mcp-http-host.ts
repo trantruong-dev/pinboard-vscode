@@ -21,7 +21,7 @@ import { AddressInfo } from 'node:net';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
-import { FeedbackTools, registerFeedbackTools } from './feedback-tools';
+import { FeedbackTools, McpActivity, registerFeedbackTools } from './feedback-tools';
 
 const HOST = '127.0.0.1';
 const ENDPOINT = '/mcp';
@@ -31,9 +31,24 @@ function allowedHosts(port: number): string[] {
     return [`127.0.0.1:${port}`, `localhost:${port}`, '127.0.0.1', 'localhost'];
 }
 
+/**
+ * What the panel can say about the connection, and only what is observed.
+ *
+ * Sessions are counted rather than guessed at because this build hosts the server: a session here
+ * is a client that completed an MCP handshake, not an inference from something else.
+ */
+export interface McpObservations {
+    sessions: number;
+    lastToolCallAt: number | null;
+    lastToolName: string | null;
+}
+
 export interface RunningMcpServer {
     readonly port: number;
     readonly url: string;
+    observe(): McpObservations;
+    /** Called whenever a session opens or closes or a tool is used, so the panel can repaint. */
+    onActivity(listener: () => void): void;
     dispose(): Promise<void>;
 }
 
@@ -50,7 +65,7 @@ interface Session {
  * connected to a transport" - so sharing one across sessions locks out every client after the
  * first. They all close over the same FeedbackTools, so a session per client still means one queue.
  */
-function createMcpServer(tools: FeedbackTools, version: string): McpServer {
+function createMcpServer(tools: FeedbackTools, version: string, activity: McpActivity): McpServer {
     const mcp = new McpServer(
         { name: 'pinboard', version },
         {
@@ -58,7 +73,7 @@ function createMcpServer(tools: FeedbackTools, version: string): McpServer {
                 'Pinboard holds code feedback the developer pinned in their editor. Start with feedback_list to read anything already waiting, acknowledge it, then close each item with feedback_resolve and a real summary. feedback_watch blocks for the next batch.',
         },
     );
-    registerFeedbackTools(mcp, tools);
+    registerFeedbackTools(mcp, tools, activity);
     return mcp;
 }
 
@@ -79,6 +94,22 @@ export async function startMcpServer(
 ): Promise<RunningMcpServer> {
     // One session per client, kept so follow-up requests reach the session that started them.
     const sessions = new Map<string, Session>();
+
+    let lastToolCallAt: number | null = null;
+    let lastToolName: string | null = null;
+    const listeners: (() => void)[] = [];
+    const notify = (): void => {
+        for (const listener of listeners) {
+            listener();
+        }
+    };
+    const activity: McpActivity = {
+        record(toolName) {
+            lastToolCallAt = Date.now();
+            lastToolName = toolName;
+            notify();
+        },
+    };
 
     const http = createServer((req, res) => {
         void handle(req, res).catch(error => {
@@ -105,7 +136,7 @@ export async function startMcpServer(
 
         // No session yet: this must be an initialize, which gets a transport and a server of its own.
         const port = (http.address() as AddressInfo).port;
-        const mcp = createMcpServer(tools, version);
+        const mcp = createMcpServer(tools, version, activity);
         const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             enableDnsRebindingProtection: true,
@@ -113,15 +144,18 @@ export async function startMcpServer(
             onsessioninitialized: id => {
                 sessions.set(id, { transport, mcp });
                 log(`session ${id} opened`);
+                notify();
             },
             onsessionclosed: id => {
                 sessions.delete(id);
                 log(`session ${id} closed`);
+                notify();
             },
         });
         transport.onclose = () => {
             if (transport.sessionId) {
                 sessions.delete(transport.sessionId);
+                notify();
             }
         };
         await mcp.connect(transport);
@@ -134,7 +168,12 @@ export async function startMcpServer(
     return {
         port,
         url: `http://${HOST}:${port}${ENDPOINT}`,
+        observe: () => ({ sessions: sessions.size, lastToolCallAt, lastToolName }),
+        onActivity(listener) {
+            listeners.push(listener);
+        },
         async dispose() {
+            listeners.length = 0;
             // Snapshot first: closing a transport fires onclose, which mutates the map.
             for (const session of [...sessions.values()]) {
                 await session.transport.close().catch(() => undefined);

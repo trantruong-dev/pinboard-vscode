@@ -7,7 +7,6 @@ import * as path from 'node:path';
 
 import * as vscode from 'vscode';
 
-import { Feedback } from './model/feedback';
 import { FeedbackStore } from './store/feedback-store';
 import { storeFileName } from './store/store-paths';
 import { draftFromFile, draftFromSelection, relativePath } from './capture/capture';
@@ -16,7 +15,7 @@ import { LineEdit, shiftRangeAll } from './capture/anchors';
 import { FeedbackTools } from './mcp/feedback-tools';
 import { RunningMcpServer, startMcpServer } from './mcp/mcp-http-host';
 import { PinboardServerDefinitionProvider } from './mcp/server-definition';
-import { QueueTreeProvider } from './ui/queue-tree';
+import { QueueViewProvider } from './ui/queue-view';
 import { PinDecorations, rangeOf } from './ui/decorations';
 
 let store: FeedbackStore | undefined;
@@ -39,11 +38,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await store.load();
     output.appendLine(`Queue: ${file}`);
 
-    const tree = new QueueTreeProvider(store);
+    const tree = new QueueViewProvider(context.extensionUri, store, {
+        reveal: id => void vscode.commands.executeCommand('pinboard.revealItem', id),
+        remove: id => store!.remove([id]),
+        copyMcpConfig: () => void vscode.commands.executeCommand('pinboard.copyMcpConfig'),
+    });
     const decorations = new PinDecorations(store);
-    context.subscriptions.push(decorations, { dispose: () => tree.dispose() });
+    context.subscriptions.push(decorations, tree);
     context.subscriptions.push(
-        vscode.window.createTreeView('pinboard.queue', { treeDataProvider: tree }),
+        vscode.window.registerWebviewViewProvider('pinboard.queue', tree, {
+            // The queue keeps its selection and its folded groups while the panel is hidden, so
+            // coming back to it does not silently reset what the user was looking at.
+            webviewOptions: { retainContextWhenHidden: true },
+        }),
     );
 
     const readText = async (relative: string): Promise<string | null> => {
@@ -85,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.workspace.onDidChangeTextDocument(event => onDocumentChanged(event)),
     );
 
-    registerCommands(context, folder, store, tree, output);
+    registerCommands(context, folder, store, tree, output, refresh);
 
     // The server starts last: the definition provider is registered first so the editor has
     // something to ask, and is told to ask again once the port is known.
@@ -107,8 +114,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             String(context.extension.packageJSON.version),
         );
         definitions.announce();
+        // The footer says only what has been observed, so it is driven by the server's own record of
+        // sessions and tool calls rather than an assumption that a client is out there.
+        const running = server;
+        const publish = (): void =>
+            tree.setConnection({ serverRunning: true, url: running.url, ...running.observe() });
+        running.onActivity(publish);
+        publish();
     } catch (error) {
         output.appendLine(`[mcp] failed to start: ${String(error)}`);
+        tree.setConnection({
+            serverRunning: false,
+            url: null,
+            sessions: 0,
+            lastToolCallAt: null,
+            lastToolName: null,
+        });
         void vscode.window.showErrorMessage(
             `Pinboard could not start its MCP server: ${String(error)}. Agents will not see the queue.`,
         );
@@ -165,8 +186,9 @@ function registerCommands(
     context: vscode.ExtensionContext,
     folder: vscode.WorkspaceFolder,
     queue: FeedbackStore,
-    tree: QueueTreeProvider,
+    tree: QueueViewProvider,
     output: vscode.OutputChannel,
+    refresh: () => Promise<void>,
 ): void {
     const maxLines = () =>
         vscode.workspace.getConfiguration('pinboard').get<number>('snippet.maxLines', 400);
@@ -242,9 +264,10 @@ function registerCommands(
             }
         }),
 
-        vscode.commands.registerCommand('pinboard.deleteItem', (node?: { feedback?: Feedback }) => {
-            if (node?.feedback) {
-                queue.remove([node.feedback.id]);
+        vscode.commands.registerCommand('pinboard.deleteItem', (id?: string) => {
+            const target = id ?? tree.selected;
+            if (target) {
+                queue.remove([target]);
             }
         }),
 
@@ -271,7 +294,9 @@ function registerCommands(
             }
         }),
 
-        vscode.commands.registerCommand('pinboard.refresh', () => tree.refresh()),
+        // Recomputes staleness rather than only repainting: the reason to press Refresh is that
+        // something changed on disk outside the editor, which is exactly what the cached flags miss.
+        vscode.commands.registerCommand('pinboard.refresh', () => void refresh()),
 
         vscode.commands.registerCommand('pinboard.copyMcpConfig', async () => {
             if (!server) {

@@ -59,16 +59,11 @@
         {
           "id": "pinboard.queue",
           "name": "Queue",
+          "type": "webview",
           "icon": "media/pinboard.svg"
         }
       ]
     },
-    "viewsWelcome": [
-      {
-        "view": "pinboard.queue",
-        "contents": "Nothing pinned yet.\n\nSelect some code and press Ctrl+Alt+Shift+F (Cmd+Alt+Shift+F on macOS), or right-click and choose Pin for Agent.\n\n[Copy MCP config for another agent](command:pinboard.copyMcpConfig)"
-      }
-    ],
     "commands": [
       {
         "command": "pinboard.pinSelection",
@@ -156,13 +151,6 @@
         {
           "command": "pinboard.copyMcpConfig",
           "when": "view == pinboard.queue"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "pinboard.deleteItem",
-          "when": "view == pinboard.queue && viewItem == pinboard.item",
-          "group": "inline"
         }
       ]
     },

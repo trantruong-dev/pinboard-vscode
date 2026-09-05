@@ -58,9 +58,22 @@ right-click and choose **Pin for Agent**. Type your note.
 a warning colour once the code under it changes. Editing above a pin moves it with the code rather
 than reporting it stale.
 
-**Review the queue.** The **Pinboard** view in the activity bar shows everything grouped by status,
-with the agent's replies in the tooltip. Click an item to jump back to the code. Delete one with the
-inline button; **Clear Finished Items** removes resolved and dismissed work in bulk.
+**Review the queue.** The **Pinboard** view in the activity bar is the same panel the JetBrains
+plugin has:
+
+- a **progress ribbon** across the top, answering how the review as a whole is going rather than
+  making you add the group counts up in your head
+- **cards** grouped under collapsible status headers, each with a status bar down its edge, where it
+  points, a line of the code, and how long ago you pinned it. The note wraps to the panel width
+  instead of being clipped
+- a **detail pane** below the selected card: the full path, the whole note, the code as it was when
+  you pinned it, and the conversation with the agent
+- a **connection footer** that says whether an agent is actually reaching the queue. It reports only
+  what was observed - a session that connected, a tool that was called and when - and never claims a
+  connection it cannot see
+
+Click a card to open its detail, double-click to jump back to the code.
+**Clear Finished Items** removes resolved and dismissed work in bulk.
 
 ## Teaching your agent when to use it
 

@@ -191,8 +191,22 @@ function asText(payload: unknown) {
 
 const statusEnum = z.enum(['PENDING', 'ACKNOWLEDGED', 'RESOLVED', 'DISMISSED']);
 
+/**
+ * Told when a tool is called, so the panel can say whether an agent is actually reaching the queue.
+ *
+ * Recorded at the wiring seam rather than inside FeedbackTools, which stays free of anything the
+ * protocol knows and the queue does not.
+ */
+export interface McpActivity {
+    record(toolName: string): void;
+}
+
 /** Wires the tools onto a server instance. One call, so the transport layer stays thin. */
-export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): void {
+export function registerFeedbackTools(
+    server: McpServer,
+    tools: FeedbackTools,
+    activity?: McpActivity,
+): void {
     server.registerTool(
         'feedback_list',
         {
@@ -206,7 +220,10 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
                     .describe('Which statuses to return. Defaults to PENDING and ACKNOWLEDGED.'),
             },
         },
-        async ({ statuses }) => asText(await tools.list(statuses ?? OPEN_STATUSES)),
+        async ({ statuses }) => {
+            activity?.record('feedback_list');
+            return asText(await tools.list(statuses ?? OPEN_STATUSES));
+        },
     );
 
     server.registerTool(
@@ -238,15 +255,17 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
                     .describe('Which statuses to watch for. Defaults to PENDING and ACKNOWLEDGED.'),
             },
         },
-        async ({ timeoutSeconds, batchWindowSeconds, statuses }, extra) =>
-            asText(
+        async ({ timeoutSeconds, batchWindowSeconds, statuses }, extra) => {
+            activity?.record('feedback_watch');
+            return asText(
                 await tools.watch(
                     statuses ?? OPEN_STATUSES,
                     timeoutSeconds ?? DEFAULT_WATCH_SECONDS,
                     batchWindowSeconds ?? DEFAULT_BATCH_WINDOW_SECONDS,
                     extra?.signal,
                 ),
-            ),
+            );
+        },
     );
 
     server.registerTool(
@@ -260,6 +279,7 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
             },
         },
         async ({ ids }) => {
+            activity?.record('feedback_acknowledge');
             const updated = tools.acknowledge(ids);
             const missing = ids.filter(id => !updated.some(item => item.id === id));
             return asText({ acknowledged: updated.map(item => item.id), unknownIds: missing });
@@ -278,6 +298,7 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
             },
         },
         async ({ id, summary }) => {
+            activity?.record('feedback_resolve');
             const updated = tools.resolve(id, summary);
             return updated ? asText(updated) : unknownId(id);
         },
@@ -295,6 +316,7 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
             },
         },
         async ({ id, reason }) => {
+            activity?.record('feedback_dismiss');
             const updated = tools.dismiss(id, reason);
             return updated ? asText(updated) : unknownId(id);
         },
@@ -312,6 +334,7 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
             },
         },
         async ({ id, body }) => {
+            activity?.record('feedback_reply');
             const updated = tools.reply(id, body);
             return updated ? asText(updated) : unknownId(id);
         },
@@ -325,7 +348,10 @@ export function registerFeedbackTools(server: McpServer, tools: FeedbackTools): 
                 'Deletes items that are already RESOLVED or DISMISSED. Only call this when the developer explicitly asks you to tidy up. Never after a batch: the summaries are how they audit what you did.',
             inputSchema: {},
         },
-        async () => asText({ deleted: tools.clearResolved() }),
+        async () => {
+            activity?.record('feedback_clear_resolved');
+            return asText({ deleted: tools.clearResolved() });
+        },
     );
 }
 
