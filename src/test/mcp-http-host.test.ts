@@ -126,6 +126,41 @@ test('watch delivers, in one call, a run of pins made while it was in flight', a
     );
 });
 
+/**
+ * More than one agent attaches at once as a matter of course - the editor's own, and whatever else
+ * the developer has pointed at the queue. Every one of them opens its own MCP session.
+ *
+ * The SDK binds a single transport per server instance, so a server shared across sessions rejects
+ * the second client with "Already connected to a transport" and it never gets a single tool call
+ * through. One session's worth of testing cannot see that, which is how it reached a release.
+ */
+test('a second client gets its own session, and both see the one queue', async () => {
+    const second = new Client({ name: 'pinboard-test-second', version: '0' });
+    await second.connect(new StreamableHTTPClientTransport(new URL(server.url)));
+    try {
+        const pinned = store.add(draft('seen from both sessions'));
+
+        const fromSecond = payload(await second.callTool({ name: 'feedback_list', arguments: {} }));
+        assert.ok(
+            fromSecond.items.some((item: { id: string }) => item.id === pinned.id),
+            'the second client must reach the tools at all',
+        );
+
+        // The first session has to keep working after the second one opens, and both are looking at
+        // the same store rather than a copy of it.
+        const fromFirst = payload(
+            await client.callTool({ name: 'feedback_acknowledge', arguments: { ids: [pinned.id] } }),
+        );
+        assert.deepEqual(fromFirst.acknowledged, [pinned.id]);
+
+        const afterAck = payload(await second.callTool({ name: 'feedback_list', arguments: {} }));
+        const item = afterAck.items.find((entry: { id: string }) => entry.id === pinned.id);
+        assert.equal(item.status, 'ACKNOWLEDGED');
+    } finally {
+        await second.close();
+    }
+});
+
 test('resolving an id that does not exist answers with an error, not silence', async () => {
     const result = await client.callTool({
         name: 'feedback_resolve',

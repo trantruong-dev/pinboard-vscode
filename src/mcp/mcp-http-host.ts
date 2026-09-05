@@ -37,6 +37,31 @@ export interface RunningMcpServer {
     dispose(): Promise<void>;
 }
 
+/** An open MCP session: the client's transport and the server instance bound to it. */
+interface Session {
+    transport: StreamableHTTPServerTransport;
+    mcp: McpServer;
+}
+
+/**
+ * Builds a server for one session.
+ *
+ * A server instance binds to exactly one transport - the SDK refuses a second with "Already
+ * connected to a transport" - so sharing one across sessions locks out every client after the
+ * first. They all close over the same FeedbackTools, so a session per client still means one queue.
+ */
+function createMcpServer(tools: FeedbackTools): McpServer {
+    const mcp = new McpServer(
+        { name: 'pinboard', version: '0.0.1' },
+        {
+            instructions:
+                'Pinboard holds code feedback the developer pinned in their editor. Start with feedback_list to read anything already waiting, acknowledge it, then close each item with feedback_resolve and a real summary. feedback_watch blocks for the next batch.',
+        },
+    );
+    registerFeedbackTools(mcp, tools);
+    return mcp;
+}
+
 /**
  * Starts the server and resolves once it is actually listening.
  *
@@ -48,17 +73,8 @@ export async function startMcpServer(
     requestedPort: number,
     log: (message: string) => void,
 ): Promise<RunningMcpServer> {
-    const mcp = new McpServer(
-        { name: 'pinboard', version: '0.0.1' },
-        {
-            instructions:
-                'Pinboard holds code feedback the developer pinned in their editor. Use feedback_watch to pick up a batch, acknowledge it, then close each item with feedback_resolve and a real summary.',
-        },
-    );
-    registerFeedbackTools(mcp, tools);
-
-    // One transport per session, kept so follow-up requests reach the session that started them.
-    const sessions = new Map<string, StreamableHTTPServerTransport>();
+    // One session per client, kept so follow-up requests reach the session that started them.
+    const sessions = new Map<string, Session>();
 
     const http = createServer((req, res) => {
         void handle(req, res).catch(error => {
@@ -79,18 +95,19 @@ export async function startMcpServer(
         const sessionId = req.headers['mcp-session-id'];
         const existing = typeof sessionId === 'string' ? sessions.get(sessionId) : undefined;
         if (existing) {
-            await existing.handleRequest(req, res);
+            await existing.transport.handleRequest(req, res);
             return;
         }
 
-        // No session yet: this must be an initialize, which gets a transport of its own.
+        // No session yet: this must be an initialize, which gets a transport and a server of its own.
         const port = (http.address() as AddressInfo).port;
+        const mcp = createMcpServer(tools);
         const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             enableDnsRebindingProtection: true,
             allowedHosts: allowedHosts(port),
             onsessioninitialized: id => {
-                sessions.set(id, transport);
+                sessions.set(id, { transport, mcp });
                 log(`session ${id} opened`);
             },
             onsessionclosed: id => {
@@ -114,11 +131,12 @@ export async function startMcpServer(
         port,
         url: `http://${HOST}:${port}${ENDPOINT}`,
         async dispose() {
-            for (const transport of sessions.values()) {
-                await transport.close().catch(() => undefined);
+            // Snapshot first: closing a transport fires onclose, which mutates the map.
+            for (const session of [...sessions.values()]) {
+                await session.transport.close().catch(() => undefined);
+                await session.mcp.close().catch(() => undefined);
             }
             sessions.clear();
-            await mcp.close().catch(() => undefined);
             await new Promise<void>(resolve => http.close(() => resolve()));
         },
     };
