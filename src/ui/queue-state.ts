@@ -70,6 +70,8 @@ export interface DetailState {
     /** The warning spelled out, or null. */
     banner: string | null;
     note: string;
+    /** Whether the note can still be rewritten - true only while the agent has not taken it. */
+    editable: boolean;
     code: string | null;
     language: string | null;
     truncated: boolean;
@@ -154,6 +156,7 @@ function toDetail(item: Feedback, flags: StaleFlags, now: number): DetailState {
         age: relativeTime(item.createdAt, now),
         banner: bannerFor(item.status, flags),
         note: item.note.trim(),
+        editable: item.status === 'PENDING',
         code: item.codeSnapshot,
         language: item.language,
         truncated: item.truncated,

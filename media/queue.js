@@ -149,6 +149,16 @@
         const head = el('div', 'head');
         head.append(el('span', 'path', view.location));
 
+        // Only while pending. Once the agent has the item it is working from the words it read,
+        // and rewriting them underneath it is how the two ends up acting on different instructions.
+        if (view.editable) {
+            const edit = el('button', 'close', '✎');
+            edit.type = 'button';
+            edit.title = 'Edit this note';
+            edit.addEventListener('click', () => post('edit', { id: view.id }));
+            head.append(edit);
+        }
+
         const remove = el('button', 'close', '🗑');
         remove.type = 'button';
         remove.title = 'Delete this item';

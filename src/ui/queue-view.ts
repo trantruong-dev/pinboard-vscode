@@ -26,6 +26,7 @@ export interface QueueViewCallbacks {
     /** Open the pinned code. Double-clicking a card, as in the JetBrains list. */
     reveal(id: string): void;
     remove(id: string): void;
+    edit(id: string): void;
     copyMcpConfig(): void;
 }
 
@@ -141,6 +142,11 @@ export class QueueViewProvider implements vscode.WebviewViewProvider, vscode.Dis
             case 'delete':
                 if (message.id) {
                     this.callbacks.remove(message.id);
+                }
+                return;
+            case 'edit':
+                if (message.id) {
+                    this.callbacks.edit(message.id);
                 }
                 return;
             case 'toggleGroup':

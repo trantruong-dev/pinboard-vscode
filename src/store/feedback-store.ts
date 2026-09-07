@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { Feedback, Message, OPEN_STATUSES, Status, withMessage, withStatus } from '../model/feedback';
+import { Feedback, Message, OPEN_STATUSES, Status, withMessage, withNote, withStatus } from '../model/feedback';
 
 /** What lands on disk. Versioned so a later format can be recognised rather than guessed at. */
 interface StoreFile {
@@ -110,6 +110,34 @@ export class FeedbackStore {
             this.changed();
         }
         return touched;
+    }
+
+    /**
+     * Rewrites the note on a pending item. Returns undefined when the edit is refused.
+     *
+     * The pending check lives here rather than only in the button the panel hides, because the
+     * agent can acknowledge the item while the input box is open.
+     *
+     * An unchanged note returns the item untouched: no updatedAt bump, no write. Same reason
+     * updateLocations skips a pin already at its range - a Save that changed nothing must not cost
+     * a rewrite of the queue file.
+     */
+    updateNote(id: string, note: string): Feedback | undefined {
+        const trimmed = note.trim();
+        if (trimmed.length === 0) {
+            return undefined;
+        }
+        const current = this.items.find(item => item.id === id);
+        if (!current || current.status !== 'PENDING') {
+            return undefined;
+        }
+        if (current.note === trimmed) {
+            return current;
+        }
+        const updated = withNote(current, trimmed);
+        this.items = this.items.map(item => (item.id === id ? updated : item));
+        this.changed();
+        return updated;
     }
 
     /** Appends to a thread without touching status, for a question or a summary. */

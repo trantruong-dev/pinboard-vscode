@@ -91,6 +91,10 @@ export function withStatus(feedback: Feedback, status: Status): Feedback {
     return { ...feedback, status, updatedAt: Date.now() };
 }
 
+export function withNote(feedback: Feedback, note: string): Feedback {
+    return { ...feedback, note, updatedAt: Date.now() };
+}
+
 export function withMessage(feedback: Feedback, message: Message): Feedback {
     return { ...feedback, thread: [...feedback.thread, message], updatedAt: Date.now() };
 }

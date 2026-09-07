@@ -41,6 +41,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const tree = new QueueViewProvider(context.extensionUri, store, {
         reveal: id => void vscode.commands.executeCommand('pinboard.revealItem', id),
         remove: id => store!.remove([id]),
+        edit: id => void vscode.commands.executeCommand('pinboard.editItem', id),
         copyMcpConfig: () => void vscode.commands.executeCommand('pinboard.copyMcpConfig'),
     });
     const decorations = new PinDecorations(store);
@@ -193,11 +194,15 @@ function registerCommands(
     const maxLines = () =>
         vscode.workspace.getConfiguration('pinboard').get<number>('snippet.maxLines', 400);
 
-    const askForNote = (placeholder: string): Thenable<string | undefined> =>
+    const askForNote = (
+        placeholder: string,
+        seed?: { value: string; title: string },
+    ): Thenable<string | undefined> =>
         vscode.window.showInputBox({
-            title: 'Pin for Agent',
+            title: seed?.title ?? 'Pin for Agent',
             prompt: 'What should the agent do here?',
             placeHolder: placeholder,
+            value: seed?.value,
             ignoreFocusOut: true,
             validateInput: value => (value.trim().length === 0 ? 'A note is required.' : undefined),
         });
@@ -260,6 +265,34 @@ function registerCommands(
             } catch {
                 void vscode.window.showWarningMessage(
                     `${feedback.filePath} no longer exists. The snapshot in the pin is what was there.`,
+                );
+            }
+        }),
+
+        vscode.commands.registerCommand('pinboard.editItem', async (id?: string) => {
+            const target = id ?? tree.selected;
+            const feedback = target ? queue.find(target) : undefined;
+            if (!feedback) {
+                return;
+            }
+            if (feedback.status !== 'PENDING') {
+                void vscode.window.showWarningMessage(
+                    'The agent already has this one. Reply to it instead of rewriting the note.',
+                );
+                return;
+            }
+            const note = await askForNote('e.g. this loop reallocates on every pass', {
+                value: feedback.note,
+                title: 'Edit Pin',
+            });
+            if (!note) {
+                return;
+            }
+            // Refused, with a note that is not blank, means the item stopped being pending while
+            // the box was open. Say so: the developer typed those words and should know.
+            if (!queue.updateNote(feedback.id, note)) {
+                void vscode.window.showWarningMessage(
+                    'The agent picked this item up while you were editing. Your change was not saved.',
                 );
             }
         }),

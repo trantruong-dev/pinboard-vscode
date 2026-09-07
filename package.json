@@ -76,6 +76,12 @@
         "category": "Pinboard"
       },
       {
+        "command": "pinboard.editItem",
+        "title": "Edit Note",
+        "category": "Pinboard",
+        "icon": "$(edit)"
+      },
+      {
         "command": "pinboard.deleteItem",
         "title": "Delete",
         "category": "Pinboard",

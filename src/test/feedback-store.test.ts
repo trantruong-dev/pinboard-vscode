@@ -87,6 +87,47 @@ test('a thread message leaves the status alone', async () => {
     assert.equal(updated.thread.length, 1);
 });
 
+test('a pending note can be rewritten, and the trim happens on the way in', async () => {
+    const { store } = await freshStore();
+    const item = store.add(draft('typo hree'));
+    const updated = store.updateNote(item.id, '  typo here  ');
+    assert.equal(updated?.note, 'typo here');
+    assert.equal(store.find(item.id)?.note, 'typo here');
+    assert.ok(updated!.updatedAt >= item.updatedAt);
+});
+
+test('a note is locked once the item leaves pending', async () => {
+    const { store } = await freshStore();
+    for (const status of ['ACKNOWLEDGED', 'RESOLVED', 'DISMISSED'] as const) {
+        const item = store.add(draft('original'));
+        store.setStatus([item.id], status);
+        assert.equal(store.updateNote(item.id, 'rewritten'), undefined, status);
+        assert.equal(store.find(item.id)?.note, 'original', status);
+    }
+});
+
+test('an unknown id and a blank note are both refused', async () => {
+    const { store } = await freshStore();
+    const item = store.add(draft('original'));
+    assert.equal(store.updateNote('not-a-real-id', 'rewritten'), undefined);
+    assert.equal(store.updateNote(item.id, ''), undefined);
+    assert.equal(store.updateNote(item.id, '   \n  '), undefined);
+    assert.equal(store.find(item.id)?.note, 'original');
+});
+
+test('rewriting a note to what it already says changes nothing', async () => {
+    const { store } = await freshStore();
+    const item = store.add(draft('original'));
+    let heard = 0;
+    store.onChanged(() => {
+        heard++;
+    });
+    assert.equal(store.updateNote(item.id, 'original')?.note, 'original');
+    assert.equal(store.updateNote(item.id, '  original  ')?.note, 'original');
+    assert.equal(heard, 0, 'a no-op must not schedule a write or wake the panel');
+    assert.equal(store.find(item.id)?.updatedAt, item.updatedAt);
+});
+
 test('clearing finished work never touches anything still open', async () => {
     const { store } = await freshStore();
     const pending = store.add(draft('pending'));

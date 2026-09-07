@@ -173,6 +173,14 @@ test('the detail pane spells out the full path and the whole note', () => {
     assert.equal(state.detail?.status, 'Pending');
 });
 
+test('only a pending item offers to have its note rewritten', () => {
+    assert.equal(build([item({ status: 'PENDING' })], new Map(), 'id-1').detail?.editable, true);
+    for (const status of ['ACKNOWLEDGED', 'RESOLVED', 'DISMISSED'] as const) {
+        const state = build([item({ status })], new Map(), 'id-1');
+        assert.equal(state.detail?.editable, false, status);
+    }
+});
+
 test('a selection that an agent resolved away does not leave a stale detail pane', () => {
     const state = build([item({ id: 'still-here' })], new Map(), 'deleted-id');
     assert.equal(state.selectedId, null);

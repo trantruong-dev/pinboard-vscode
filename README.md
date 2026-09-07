@@ -34,6 +34,11 @@ the editor through `vscode.lm.registerMcpServerDefinitionProvider`.
 For you that difference is invisible: Copilot discovers the tools with nothing to configure. It
 matters for other agents, which point at the server's URL - see below.
 
+One UI difference is worth knowing: the panel here is a webview rather than a native list, so the
+row-level actions live as buttons in the detail pane's header instead of on a keyboard shortcut.
+Editing a note is the pencil there, or **Pinboard: Edit Note** in the command palette, where the
+JetBrains build also binds `F2`.
+
 ## Requirements
 
 - **VS Code 1.101 or newer.** That is the release where the API for an extension to publish an MCP
@@ -60,6 +65,12 @@ picks. Copilot is handed that address automatically.
 right-click and choose **Pin for Agent**. Type your note.
 
 **Pin a whole file.** Right-click the file in the Explorer or its editor tab, **Pin File for Agent**.
+
+**Fix a note you already pinned.** Select the item, then click the pencil in the detail pane's
+header, or run **Pinboard: Edit Note** from the command palette. The note box reopens with your
+words in it. Once the agent has acknowledged the item the note is locked: it is already working
+from those words, and changing them underneath it is how the two of you end up acting on different
+instructions. Only the wording is editable - the pinned code is what it was.
 
 **See your pins in the code.** A pinned range is tinted and marked in the overview ruler, and turns
 a warning colour once the code under it changes. Editing above a pin moves it with the code rather
